@@ -20,20 +20,22 @@ CREATE TABLE IF NOT EXISTS candidates(
 conn.commit()
 
 def validate_length(value, max_length, field_name):
-    if len(value) > max_length:
-        print(f"{field_name} exceeds max length of {max_length}")
-        exit()
+    if len(value) <= max_length:
+        return True
+    else:
+        print(f"{field_name} must not exceed max length of {max_length}")
+        return False
 
 def get_marks(prompt, min_val, max_val):
-    try:
-        val = float(input(prompt))
-        if not (min_val <= val <= max_val):
-            print(f"Marks must be between {min_val} and {max_val}")
-            exit()
-        return val
-    except:
-        print("Inavlid numeric input")
-        exit()
+    while True:
+        try:
+            val = float(input(prompt))
+            if  min_val <= val <= max_val:
+                return val
+            else:
+                print(f"Marks must be between {min_val} and {max_val}")
+        except ValueError:
+            print("Invalid numeric input. Please try again.")
 
 student_name = input("Enter Student name: ")
 validate_length(student_name, 30, "Student Name")
@@ -48,7 +50,11 @@ technical = get_marks("Enter Technical Round Marks (0-20): ", 0, 20)
 
 total = round1 + round2 + round3 + technical
 
-result = "Selected" if total >= 35 else "Rejected"
+# result = "Selected" if total >= 35 else "Rejected"
+if ((round1 < 6.5 or round2 < 6.5 or round3 < 6.5 or technical < 13) and total < 35):
+    result = "Rejected"
+else:
+    result = "Selected"
 
 cursor.execute("""
 INSERT INTO candidates
@@ -61,15 +67,17 @@ conn.commit()
 cursor.execute("SELECT id, total FROM candidates ORDER BY total DESC")
 rows = cursor.fetchall()
 
-rank = 1
+# rank = 1
 previous_total = None
 
-for row in rows:
+for index, row in enumerate(rows, start=1):
     candidate_id = row[0]
     current_total = row[1]
 
-    if previous_total is not None and current_total < previous_total:
-        rank += 1
+    if previous_total is None:
+        rank = 1
+    elif current_total < previous_total:
+        rank = index
     
     cursor.execute("UPDATE candidates SET rank=? WHERE id=?", (rank, candidate_id))
 
